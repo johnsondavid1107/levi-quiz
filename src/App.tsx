@@ -68,7 +68,7 @@ export default function App() {
       {!canSave && game.screen !== 'results' && <StorageNotice />}
       {game.screen === 'welcome' && <Welcome game={game} patch={patch} />}
       {game.screen === 'play' && <Play game={game} patch={patch} />}
-      {game.screen === 'review' && <Review game={game} patch={patch} onSubmit={submit} />}
+      {game.screen === 'review' && <Review game={game} patch={patch} onSubmit={submit} onReset={reset} />}
       {game.screen === 'results' && game.result && <Results result={game.result} onReset={reset} />}
     </>
   );
@@ -226,8 +226,14 @@ function Play({ game, patch }: ScreenProps) {
   );
 }
 
-function Review({ game, patch, onSubmit }: ScreenProps & { onSubmit: () => void }) {
+function Review({
+  game,
+  patch,
+  onSubmit,
+  onReset,
+}: ScreenProps & { onSubmit: () => void; onReset: () => void }) {
   const [confirming, setConfirming] = useState(false);
+  const [confirmingReset, setConfirmingReset] = useState(false);
   const { answers, guess } = game;
   const answered = countAnswered(answers);
   const missing = TOTAL - answered;
@@ -294,6 +300,22 @@ function Review({ game, patch, onSubmit }: ScreenProps & { onSubmit: () => void 
       <button type="button" className="btn btn-wide" onClick={() => jump(TOTAL - 1)}>
         Back to questions
       </button>
+      <button type="button" className="btn-quiet" onClick={() => setConfirmingReset(true)}>
+        Start over
+      </button>
+
+      {confirmingReset && (
+        <Dialog title="Start over on this phone?" onClose={() => setConfirmingReset(false)}>
+          <p className="dialog-text">
+            This erases your name, answers, and tiebreaker pick on this phone. Other players aren’t
+            affected.
+          </p>
+          <div className="dialog-actions">
+            <button type="button" className="btn" onClick={() => setConfirmingReset(false)}>Keep my answers</button>
+            <button type="button" className="btn btn-gold" onClick={onReset}>Start over</button>
+          </div>
+        </Dialog>
+      )}
 
       {confirming && (
         <Dialog title="Submit your answers?" onClose={() => setConfirming(false)}>

@@ -789,3 +789,7 @@ input {
     display: none;
   }
 }
+
+.page > .btn-quiet {
+  align-self: center;
+}
