@@ -55,10 +55,13 @@ export function Dialog({
 
 export function QuestionGrid({
   answers,
+  marks,
   current,
   onPick,
 }: {
   answers: (number | null)[];
+  /** After submitting: whether each answer was right. Gold then means right, not answered. */
+  marks?: boolean[];
   current?: number;
   onPick: (index: number) => void;
 }) {
@@ -66,17 +69,22 @@ export function QuestionGrid({
     <div className="grid">
       {answers.map((answer, i) => {
         const answered = answer !== null;
+        const filled = marks ? marks[i] : answered;
+        const status = marks
+          ? marks[i] ? 'right' : 'wrong'
+          : answered ? 'answered' : 'not answered';
         return (
           <button
             key={i}
             type="button"
-            className={`grid-cell${answered ? ' is-answered' : ''}${i === current ? ' is-current' : ''}`}
-            aria-label={`Question ${i + 1}, ${answered ? 'answered' : 'not answered'}`}
+            className={`grid-cell${filled ? ' is-answered' : ''}${marks && !filled ? ' is-wrong' : ''}${i === current ? ' is-current' : ''}`}
+            aria-label={`Question ${i + 1}, ${status}`}
             aria-current={i === current ? 'true' : undefined}
             onClick={() => onPick(i)}
           >
             {i + 1}
-            {answered && <span className="grid-check" aria-hidden="true">✓</span>}
+            {filled && <span className="grid-check" aria-hidden="true">✓</span>}
+            {marks && !filled && <span className="grid-check" aria-hidden="true">✕</span>}
           </button>
         );
       })}

@@ -789,3 +789,54 @@ input {
     display: none;
   }
 }
+
+.page > .btn-quiet {
+  align-self: center;
+}
+
+/* Answer review after submitting */
+
+.verdict {
+  margin-top: 6px;
+  color: var(--gold);
+  font-weight: 800;
+}
+
+.answers-list {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.answer-static {
+  cursor: default;
+}
+
+.answer-static:active {
+  transform: none;
+}
+
+.answer-tag {
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.answer.is-wrong {
+  border-color: var(--error);
+  background: transparent;
+  box-shadow: none;
+}
+
+.grid-cell.is-wrong {
+  border-style: solid;
+  border-color: var(--error);
+}
+
+.play-links {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-top: 12px;
+}

@@ -41,7 +41,8 @@ To pick a winner, look at guests' result screens. The highest score wins. Among 
 
 - The host can't see guests' scores, reset their phones, or reveal anything to them.
 - The answer key ships in the JavaScript bundle, so a curious guest could find it.
-- One browser holds one player. Someone sharing a phone needs to use **Play Again / Start Over** first.
+- One browser holds one player. Someone sharing a phone needs to use **Start over** first.
+- After submitting, players can step through their answers and see the correct ones. **Start over** is available at any point, so a player could replay with those answers. Note scores as guests finish if that matters.
 
 ## Changing the questions
 
