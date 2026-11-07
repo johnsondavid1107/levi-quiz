@@ -67,14 +67,37 @@ export default function App() {
     <>
       {!canSave && game.screen !== 'results' && <StorageNotice />}
       {game.screen === 'welcome' && <Welcome game={game} patch={patch} />}
-      {game.screen === 'play' && <Play game={game} patch={patch} />}
+      {game.screen === 'play' && <Play game={game} patch={patch} onReset={reset} />}
       {game.screen === 'review' && <Review game={game} patch={patch} onSubmit={submit} onReset={reset} />}
-      {game.screen === 'results' && game.result && <Results result={game.result} onReset={reset} />}
+      {game.screen === 'results' && game.result && (
+        <Results result={game.result} answers={game.answers} onReset={reset} />
+      )}
     </>
   );
 }
 
 type ScreenProps = { game: GameState; patch: (changes: Partial<GameState>) => void };
+
+function StartOver({ label = 'Start over', onReset }: { label?: string; onReset: () => void }) {
+  const [confirming, setConfirming] = useState(false);
+
+  return (
+    <>
+      <button type="button" className="btn-quiet" onClick={() => setConfirming(true)}>{label}</button>
+      {confirming && (
+        <Dialog title="Start over on this phone?" onClose={() => setConfirming(false)}>
+          <p className="dialog-text">
+            This erases your name, answers, and score on this phone. Other players aren’t affected.
+          </p>
+          <div className="dialog-actions">
+            <button type="button" className="btn" onClick={() => setConfirming(false)}>Keep going</button>
+            <button type="button" className="btn btn-gold" onClick={onReset}>Start over</button>
+          </div>
+        </Dialog>
+      )}
+    </>
+  );
+}
 
 function Welcome({ game, patch }: ScreenProps) {
   const [error, setError] = useState(false);
@@ -124,7 +147,7 @@ function Welcome({ game, patch }: ScreenProps) {
   );
 }
 
-function Play({ game, patch }: ScreenProps) {
+function Play({ game, patch, onReset }: ScreenProps & { onReset: () => void }) {
   const { index, answers } = game;
   const question = QUESTIONS[index];
   const [direction, setDirection] = useState<'forward' | 'backward'>('forward');
@@ -188,6 +211,9 @@ function Play({ game, patch }: ScreenProps) {
             })}
           </div>
         </div>
+        <div className="play-links">
+          <StartOver onReset={onReset} />
+        </div>
       </main>
 
       <nav className="play-nav" aria-label="Question navigation">
@@ -233,7 +259,6 @@ function Review({
   onReset,
 }: ScreenProps & { onSubmit: () => void; onReset: () => void }) {
   const [confirming, setConfirming] = useState(false);
-  const [confirmingReset, setConfirmingReset] = useState(false);
   const { answers, guess } = game;
   const answered = countAnswered(answers);
   const missing = TOTAL - answered;
@@ -300,22 +325,7 @@ function Review({
       <button type="button" className="btn btn-wide" onClick={() => jump(TOTAL - 1)}>
         Back to questions
       </button>
-      <button type="button" className="btn-quiet" onClick={() => setConfirmingReset(true)}>
-        Start over
-      </button>
-
-      {confirmingReset && (
-        <Dialog title="Start over on this phone?" onClose={() => setConfirmingReset(false)}>
-          <p className="dialog-text">
-            This erases your name, answers, and tiebreaker pick on this phone. Other players aren’t
-            affected.
-          </p>
-          <div className="dialog-actions">
-            <button type="button" className="btn" onClick={() => setConfirmingReset(false)}>Keep my answers</button>
-            <button type="button" className="btn btn-gold" onClick={onReset}>Start over</button>
-          </div>
-        </Dialog>
-      )}
+      <StartOver onReset={onReset} />
 
       {confirming && (
         <Dialog title="Submit your answers?" onClose={() => setConfirming(false)}>
@@ -332,24 +342,50 @@ function Review({
 
 const CONFETTI = Array.from({ length: 30 }, (_, i) => i);
 
-function Results({ result, onReset }: { result: Result; onReset: () => void }) {
-  const [confirming, setConfirming] = useState(false);
+function Results({
+  result,
+  answers,
+  onReset,
+}: {
+  result: Result;
+  answers: (number | null)[];
+  onReset: () => void;
+}) {
+  const [viewing, setViewing] = useState<number | null>(null);
+  const [celebrated, setCelebrated] = useState(false);
+
+  if (viewing !== null) {
+    return (
+      <AnswerReview
+        answers={answers}
+        index={viewing}
+        onGoTo={setViewing}
+        onExit={() => {
+          setViewing(null);
+          window.scrollTo(0, 0);
+        }}
+        onReset={onReset}
+      />
+    );
+  }
 
   return (
     <main className="results">
-      <div className="confetti" aria-hidden="true">
-        {CONFETTI.map((i) => (
-          <i
-            key={i}
-            className={`confetti-piece confetti-${i % 3}`}
-            style={{
-              left: `${(i * 37) % 100}%`,
-              animationDelay: `${(i * 83) % 900}ms`,
-              animationDuration: `${2200 + ((i * 131) % 1200)}ms`,
-            }}
-          />
-        ))}
-      </div>
+      {!celebrated && (
+        <div className="confetti" aria-hidden="true">
+          {CONFETTI.map((i) => (
+            <i
+              key={i}
+              className={`confetti-piece confetti-${i % 3}`}
+              style={{
+                left: `${(i * 37) % 100}%`,
+                animationDelay: `${(i * 83) % 900}ms`,
+                animationDuration: `${2200 + ((i * 131) % 1200)}ms`,
+              }}
+            />
+          ))}
+        </div>
+      )}
 
       <h1 className="results-title">You did it!</h1>
       <Marquee>
@@ -362,21 +398,134 @@ function Results({ result, onReset }: { result: Result; onReset: () => void }) {
       <p className="results-pick">Your tiebreaker pick: <strong>{result.guess}</strong></p>
       <p className="results-host">Show this screen to the birthday host!</p>
 
-      <button type="button" className="btn-quiet" onClick={() => setConfirming(true)}>
-        Play Again / Start Over
+      <button
+        type="button"
+        className="btn btn-gold btn-wide"
+        onClick={() => {
+          setCelebrated(true);
+          setViewing(0);
+        }}
+      >
+        See your answers
       </button>
+      <StartOver label="Play Again / Start Over" onReset={onReset} />
+    </main>
+  );
+}
 
-      {confirming && (
-        <Dialog title="Start over on this phone?" onClose={() => setConfirming(false)}>
-          <p className="dialog-text">
-            This erases the score and answers on this phone. Other players aren’t affected.
-          </p>
+function AnswerReview({
+  answers,
+  index,
+  onGoTo,
+  onExit,
+  onReset,
+}: {
+  answers: (number | null)[];
+  index: number;
+  onGoTo: (index: number) => void;
+  onExit: () => void;
+  onReset: () => void;
+}) {
+  const question = QUESTIONS[index];
+  const picked = answers[index];
+  const isRight = picked === question.correct;
+  const marks = QUESTIONS.map((q, i) => answers[i] === q.correct);
+  const rightCount = marks.filter(Boolean).length;
+  const isLast = index === TOTAL - 1;
+  const [direction, setDirection] = useState<'forward' | 'backward'>('forward');
+  const [gridOpen, setGridOpen] = useState(false);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+
+  useEffect(() => {
+    headingRef.current?.focus({ preventScroll: true });
+    window.scrollTo(0, 0);
+  }, [index]);
+
+  const goTo = (target: number) => {
+    setDirection(target < index ? 'backward' : 'forward');
+    onGoTo(target);
+  };
+
+  return (
+    <div className="play">
+      <header className="play-header">
+        <div className="bulb-row" aria-hidden="true">
+          {marks.map((right, i) => (
+            <span
+              key={i}
+              className={`bulb${right ? ' is-lit' : ''}${i === index ? ' is-current' : ''}`}
+            />
+          ))}
+        </div>
+        <div className="play-status">
+          <span>Question {index + 1} of {TOTAL}</span>
+          <span className="play-answered">{rightCount} right</span>
+        </div>
+      </header>
+
+      <main className="play-main">
+        <div key={index} className={`slide slide-${direction}`}>
+          <h1 ref={headingRef} className="prompt" tabIndex={-1}>{question.prompt}</h1>
+          <p className="verdict">{isRight ? 'You got it!' : 'Not this one'}</p>
+          <ul className="answers answers-list">
+            {question.options.map((option, i) => {
+              const isCorrect = i === question.correct;
+              const isPicked = i === picked;
+              const state = isCorrect ? ' is-selected' : isPicked ? ' is-wrong' : '';
+              return (
+                <li key={i} className={`answer answer-static${state}`}>
+                  <span className="answer-letter" aria-hidden="true">{LETTERS[i]}</span>
+                  <span className="answer-text">
+                    {option}
+                    {isPicked && <span className="answer-tag">Your answer</span>}
+                    {isCorrect && !isPicked && <span className="answer-tag">Correct answer</span>}
+                  </span>
+                  {isCorrect && <span className="answer-check" aria-hidden="true">✓</span>}
+                  {isPicked && !isCorrect && <span className="answer-check" aria-hidden="true">✕</span>}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+        <div className="play-links">
+          <button type="button" className="btn-quiet" onClick={onExit}>Back to my score</button>
+          <StartOver onReset={onReset} />
+        </div>
+      </main>
+
+      <nav className="play-nav" aria-label="Answer navigation">
+        <button type="button" className="btn" disabled={index === 0} onClick={() => goTo(index - 1)}>
+          Back
+        </button>
+        <button type="button" className="btn" onClick={() => setGridOpen(true)}>
+          All Questions
+        </button>
+        <button
+          type="button"
+          className="btn btn-gold"
+          onClick={() => (isLast ? onExit() : goTo(index + 1))}
+        >
+          {isLast ? 'See my score' : 'Next'}
+        </button>
+      </nav>
+
+      {gridOpen && (
+        <Dialog title="All questions" onClose={() => setGridOpen(false)}>
+          <p className="dialog-text">{rightCount} of {TOTAL} right. Gold numbers are the ones you got.</p>
+          <QuestionGrid
+            answers={answers}
+            marks={marks}
+            current={index}
+            onPick={(i) => {
+              setGridOpen(false);
+              goTo(i);
+            }}
+          />
           <div className="dialog-actions">
-            <button type="button" className="btn" onClick={() => setConfirming(false)}>Keep my score</button>
-            <button type="button" className="btn btn-gold" onClick={onReset}>Start over</button>
+            <button type="button" className="btn" onClick={() => setGridOpen(false)}>Close</button>
           </div>
         </Dialog>
       )}
-    </main>
+    </div>
   );
 }
